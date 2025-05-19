@@ -26,6 +26,15 @@ interface AccountContract {
         // Добавление нового счета
         fun addAccount(name: String, balance: String, currency: String)
 
+        // Удаление счета
+        fun deleteAccount(accountId: String)
+
+        // Полное обновление данных счета
+        fun updateAccountFully(accountId: String, account: Account)
+
+        // Изменение статуса активности счета
+        fun updateAccountStatus(accountId: String, isActive: Boolean)
+
     }
 
 }
