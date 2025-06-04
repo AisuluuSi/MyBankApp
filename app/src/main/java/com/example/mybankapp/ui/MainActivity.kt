@@ -2,63 +2,86 @@ package com.cht.mybankapp.ui
 
 import android.os.Bundle
 import android.view.LayoutInflater
-import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
-import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.cht.mybankapp.data.model.Account
-import com.cht.mybankapp.domain.contract.AccountContract
-import com.cht.mybankapp.domain.presenter.AccountPresenter
+import com.example.mybankapp.ui.AccountViewModel
 import com.example.hw.R
 import com.example.hw.databinding.ActivityMainBinding
 
-class MainActivity : AppCompatActivity(), AccountContract.View {
+class MainActivity : AppCompatActivity() {
 
+    // Переменная для ViewBinding
     private var _binding: ActivityMainBinding? = null
     private val binding get() = _binding!!
 
     // Презентер для управления логикой работы со счетами
-
-    private lateinit var presenter: AccountContract.Presenter
+    private val viewModel: AccountViewModel by viewModels()
+    // Адаптер для отображения списка счетов
     private lateinit var adapter: AccountAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Привязываем макет к активности с помощью ViewBinding
         _binding = ActivityMainBinding.inflate(layoutInflater)
         val view = binding.root
         setContentView(view)
 
-        // Инициализация презентера
-        presenter = AccountPresenter(this)
-        adapter = AccountAdapter()
+        // Инициализация адаптера с обработчиками действий
+        adapter = AccountAdapter(
+            // Обработка удаления аккаунта
+            onDelete = { id ->
+                viewModel.deleteAccount(id)
+            },
+            // Обработка нажатия кнопки редактирования
+            onEdit = { account ->
+                //show edit dialog
+                showEditDialog(account)
+            },
+            // Обработка переключения статуса
+            onStatusToggle = { id, isChecked ->
+                viewModel.updateAccountStatus(id, isChecked)
+            }
+        )
+        // Настройка recyclerView (вертикальный список)
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
+        // Установка адаптера
         binding.recyclerView.adapter = adapter
 
+        // Обработка нажатия кнопки Добавить счет
         binding.btnAdd.setOnClickListener {
             showAddDialog()
         }
-    }
-    // Отображение списка счетов
-    override fun showAccounts(accounts: List<Account>) {
-        adapter.submitList(accounts)
+
+        // Загрузка списка счетов
+        viewModel.loadAccounts()
+        subscribeToLiveData()
     }
 
-    // Отображение сообщения об ошибке
-    override fun showError(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    private fun subscribeToLiveData(){
+        // Подписываюясь через observe к Livedata переменной accounts из viewModel
+        // и обновляю адаптер
+        viewModel.accounts.observe(this){
+            adapter.submitList(it)
+        }
+        // Подписываюсь к Livedata переменной SuccessMessage из viewModel
+        // и показываю тост с ссобщением об успехе
+        viewModel.successMessage.observe(this){
+            Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
+        }
+        // Подписываюсь к Livedata переменной ErrorMessage из viewModel
+        // и показываю тост с ссобщением об ошибке
+        viewModel.errorMessage.observe(this){
+            Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
+        }
     }
 
-    // Отображение сообщения об успешной операции
-    override fun showSuccess(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-    }
 
+    // Показ диалогового окна для добавления нового счета
     private fun showAddDialog() {
         // Создание и настройка пользовательского макета диалога
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_account, null)
@@ -77,9 +100,46 @@ class MainActivity : AppCompatActivity(), AccountContract.View {
                 val currency = currencyInput.text.toString()
 
                 // Вызов метода добавления счета в презентере
-                presenter.addAccount(name, balance, currency)
+                viewModel.addAccount(name, balance, currency)
             }
             .setNegativeButton("Отмена", null) // Кнопка отмены
             .show()
     }
+
+    // Метод отображения диалога для редактирования счета
+    private fun showEditDialog(account: Account) {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_account, null)
+        val nameInput = dialogView.findViewById<EditText>(R.id.etName)
+        val balanceInput = dialogView.findViewById<EditText>(R.id.etBalance)
+        val currencyInput = dialogView.findViewById<EditText>(R.id.etCurrency)
+
+        // Заполняем текущими данными
+        nameInput.setText(account.name)
+        balanceInput.setText(account.balance)
+        currencyInput.setText(account.currency)
+
+        // Отображение диалога редактирования
+        AlertDialog.Builder(this)
+            .setTitle("Редактировать счёт")
+            .setView(dialogView)
+            .setPositiveButton("Обновить") { _, _ ->
+                // Получаем обновленные данные
+                val name = nameInput.text.toString()
+                val balance = balanceInput.text.toString()
+                val currency = currencyInput.text.toString()
+
+                // Создаем копию объекта с обновленными полями
+                val updated = account.copy(
+                    name = name,
+                    balance = balance,
+                    currency = currency
+                )
+
+                // Обновляем счет через viewModel
+                viewModel.updateAccountFully(updated.id!!, updated)
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
 }
