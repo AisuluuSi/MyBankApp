@@ -2,15 +2,20 @@ package com.example.mybankapp.ui
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.cht.mybankapp.data.api.AccountApi
 import com.cht.mybankapp.data.api.ApiClient
 import com.cht.mybankapp.data.model.Account
 import com.cht.mybankapp.data.model.PatchAccountStatusDTO
+import dagger.hilt.android.lifecycle.HiltViewModel
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import javax.inject.Inject
 
-
-class AccountViewModel: ViewModel() {
+@HiltViewModel
+class AccountViewModel @Inject constructor(
+    private val accountApi: AccountApi
+): ViewModel() {
 
     // Приватная переменная LiveData для хранения списка аккаунтов
     // доступна только внутри ViewModel
@@ -31,7 +36,7 @@ class AccountViewModel: ViewModel() {
     // Загрузка списка счетов
     fun loadAccounts() {
         // Выполняем асинхронный запрос к API для получения списка счетов
-        ApiClient.accountApi.getAccounts().enqueue(object : Callback<List<Account>> {
+        accountApi.getAccounts().enqueue(object : Callback<List<Account>> {
             // Обработка успешного ответа
             override fun onResponse(call: Call<List<Account>>, response: Response<List<Account>>) {
                 if (response.isSuccessful) {
@@ -56,7 +61,7 @@ class AccountViewModel: ViewModel() {
         val account = Account(name = name, balance = balance, currency = currency, isActive = true)
 
         // Выполняем асинхронный запрос к API для создания нового счета
-        ApiClient.accountApi.createAccount(account).enqueue(object : Callback<Account> {
+        accountApi.createAccount(account).enqueue(object : Callback<Account> {
             // Обработка успешного ответа
             override fun onResponse(call: Call<Account>, response: Response<Account>) {
                 if (response.isSuccessful) {
@@ -80,7 +85,7 @@ class AccountViewModel: ViewModel() {
 
     // Удаление счета
     fun deleteAccount(accountId: String) {
-        ApiClient.accountApi.deleteAccount(accountId).enqueue(object: Callback<Unit> {
+        accountApi.deleteAccount(accountId).enqueue(object: Callback<Unit> {
             // Обработка успешного ответа
             override fun onResponse(call: Call<Unit>, response: Response<Unit>) {
                 // Показываем сообщение об успешном удалении счета
@@ -105,7 +110,7 @@ class AccountViewModel: ViewModel() {
 
     // Обновление счета
     fun updateAccountFully(accountId: String, account: Account) {
-        ApiClient.accountApi.updateAccountFully(accountId, account).enqueue(object: Callback<Account>{
+        accountApi.updateAccountFully(accountId, account).enqueue(object: Callback<Account>{
             // Обработка успешного ответа
             override fun onResponse(call: Call<Account>, response: Response<Account>) {
                 // Показываем сообщение об успешном обновлении счета
@@ -130,7 +135,7 @@ class AccountViewModel: ViewModel() {
 
     // Обновление статуса аккаунта
     fun updateAccountStatus(accountId: String, isActive: Boolean) {
-        ApiClient.accountApi.patchAccountStatus(accountId, PatchAccountStatusDTO(isActive)).enqueue(object: Callback<Account>{
+        accountApi.patchAccountStatus(accountId, PatchAccountStatusDTO(isActive)).enqueue(object: Callback<Account>{
             // Обработка успешного ответа
             override fun onResponse(call: Call<Account>, response: Response<Account>) {
                 // Показываем сообщение об успешном обновлении статуса счета
